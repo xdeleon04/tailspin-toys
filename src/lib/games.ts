@@ -90,6 +90,10 @@ function compareByRatingDesc(a: Game, b: Game): number {
     return ratingOrder === 0 ? compareByTitleAsc(a, b) : ratingOrder;
 }
 
+function normalizeSearchTerm(value: string): string {
+    return value.trim().toLocaleLowerCase('en');
+}
+
 /**
  * Returns a copy of the provided games in the requested catalog order.
  *
@@ -108,6 +112,25 @@ export function sortGames(gamesToSort: readonly Game[], sortOption: GameSortOpti
         case 'title-asc':
             return sortedGames.sort(compareByTitleAsc);
     }
+}
+
+/**
+ * Returns games whose titles contain the provided search query, ignoring case.
+ *
+ * @param gamesToFilter - Games returned by the build-time database client or supplied by tests.
+ * @param query - User-entered title search query. Empty or whitespace-only values return all games.
+ * @returns A new array containing only games with titles that include the normalized query.
+ */
+export function filterGamesByTitle(gamesToFilter: readonly Game[], query: string): Game[] {
+    const normalizedQuery = normalizeSearchTerm(query);
+
+    if (normalizedQuery.length === 0) {
+        return [...gamesToFilter];
+    }
+
+    return gamesToFilter.filter((game) =>
+        normalizeSearchTerm(game.title).includes(normalizedQuery),
+    );
 }
 
 /**
