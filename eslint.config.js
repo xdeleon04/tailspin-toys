@@ -4,17 +4,17 @@ import eslintPluginAstro from "eslint-plugin-astro";
 import globals from "globals";
 
 export default [
-  // Global ignores
   {
     ignores: ["dist/", "node_modules/", ".astro/", ".data/", "db/migrations/"],
   },
 
-  // Base JavaScript/TypeScript recommended rules
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
-  // Global settings for all files
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+    },
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -22,18 +22,21 @@ export default [
       },
     },
     rules: {
-      // Allow unused variables prefixed with _ (common convention for intentional skips)
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      "@typescript-eslint/array-type": ["error", { default: "array-simple" }],
+      "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { fixStyle: "separate-type-imports", prefer: "type-imports" },
+      ],
     },
   },
 
-  // Astro files
   ...eslintPluginAstro.configs.recommended,
 
-  // TypeScript-specific overrides
   {
     files: ["**/*.ts"],
     languageOptions: {

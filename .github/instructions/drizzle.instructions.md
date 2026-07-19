@@ -55,6 +55,28 @@ export async function getAllGameIds(db: Database): Promise<number[]> {
 - Map raw rows to the app-facing `Game`/`Publisher`/`Category` types in one place; don't leak Drizzle row shapes into components.
 - Keep ordering/lookup logic in `games.ts`, not in pages.
 
+## Function Documentation
+
+Every exported function in `db/` and `src/lib/` must have a TSDoc/JSDoc block. Document intent and API contracts, not line-by-line mechanics:
+
+- Start with the purpose of the function and any important build-time, seeding, or determinism constraints.
+- Include `@param` entries for every parameter. For injectable data-access helpers, explicitly document the `db` parameter and whether callers pass the real build-time database or a test database.
+- Include `@returns` for the resolved value, including important ordering guarantees, nullable results, or idempotent behavior.
+- Update or delete the comment whenever the function behavior changes.
+
+```ts
+/**
+ * Returns all game IDs in deterministic title order for static route generation.
+ *
+ * @param db - Drizzle database client; pages pass the build-time client and tests pass an in-memory client.
+ * @returns Ordered game IDs for `getStaticPaths()`.
+ */
+export async function getAllGameIds(db: Database): Promise<number[]> {
+  const rows = await db.select({ id: games.id }).from(games).orderBy(asc(games.title));
+  return rows.map((r) => r.id);
+}
+```
+
 ## Determinism
 
 Seed-derived values must be reproducible across builds. Derive star ratings from a stable hash of the title (`ratingFromTitle`) — **never** `Math.random()`.
@@ -66,4 +88,3 @@ Unit-test transforms directly and helpers against `createTestDatabase()`. See [`
 ## Type checking
 
 The data layer (`db/**/*.ts`, `src/lib/*.ts`) is type-checked by `npm run typecheck`, which runs the native **TypeScript 7** compiler (`tsgo`, from `@typescript/native-preview`) against `tsconfig.tsgo.json`. Keep helpers exported with explicit parameter and return types so `tsgo` can verify them. Linting is unaffected — ESLint + `typescript-eslint` still run on the classic `typescript` package.
-
