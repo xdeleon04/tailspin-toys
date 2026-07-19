@@ -7,15 +7,19 @@ interface GameSummary {
 
 async function getGameSummaries(page: Page): Promise<GameSummary[]> {
   return page.getByTestId('game-card').evaluateAll((cards) =>
-    cards.map((card) => {
+    cards.flatMap((card) => {
       const element = card as HTMLElement;
+      if (element.hidden) {
+        return [];
+      }
+
       const rawRating = element.dataset.gameRating;
       const rating = rawRating ? Number(rawRating) : null;
 
-      return {
+      return [{
         title: element.dataset.gameTitle ?? '',
         rating: rating !== null && Number.isFinite(rating) ? rating : null,
-      };
+      }];
     }),
   );
 }
@@ -138,6 +142,52 @@ test.describe('Game Listing and Navigation', () => {
       const games = await getGameSummaries(page);
       const expectedTitles = getTitles([...games].sort(compareRatingDesc));
       expect(getTitles(games)).toEqual(expectedTitles);
+    });
+  });
+
+  test('should filter games by title as the user types and submits search', async ({ page }) => {
+    await test.step('Navigate to homepage and locate the labeled search input', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+      const searchInput = page.getByRole('searchbox', { name: /search games by title/i });
+      await expect(searchInput).toHaveAttribute('data-testid', 'game-search-input');
+    });
+
+    await test.step('Filter results while typing with case-insensitive matching', async () => {
+      const searchInput = page.getByRole('searchbox', { name: /search games by title/i });
+      const allGames = await getGameSummaries(page);
+      expect(allGames.length).toBeGreaterThan(0);
+
+      const typedQuery = allGames[0].title.slice(0, 4).toUpperCase();
+      await searchInput.fill(typedQuery);
+
+      const filteredGames = await getGameSummaries(page);
+      expect(filteredGames.length).toBeGreaterThan(0);
+      expect(filteredGames.every((game) => game.title.toLocaleLowerCase('en').includes(typedQuery.toLocaleLowerCase('en')))).toBeTruthy();
+    });
+
+    await test.step('Submit the same search from the keyboard and keep filtered results', async () => {
+      const searchInput = page.getByRole('searchbox', { name: /search games by title/i });
+      await searchInput.press('Enter');
+
+      const submittedGames = await getGameSummaries(page);
+      expect(submittedGames.length).toBeGreaterThan(0);
+      expect(await page.getByTestId('games-grid').isVisible()).toBeTruthy();
+    });
+  });
+
+  test('should show an empty search state when no game titles match', async ({ page }) => {
+    await test.step('Navigate to homepage and enter a non-matching search', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+      const searchInput = page.getByRole('searchbox', { name: /search games by title/i });
+      await searchInput.fill('zzzz-no-match-zzzz');
+    });
+
+    await test.step('Show a no-results message and hide the games grid', async () => {
+      await expect(page.getByTestId('games-grid')).toBeHidden();
+      await expect(page.getByTestId('game-search-empty-state')).toBeVisible();
+      await expect(page.getByTestId('game-search-empty-state')).toContainText('No games match your search.');
     });
   });
 

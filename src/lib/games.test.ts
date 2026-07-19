@@ -3,6 +3,7 @@ import { createTestDatabase } from '../../db/test-helpers';
 import { categories, publishers, games } from '../../db/schema';
 import type { Database } from './db';
 import {
+    filterGamesByTitle,
     getAllGames,
     getAllGameIds,
     getGameById,
@@ -145,5 +146,34 @@ describe('sortGames', () => {
         const originalOrder = unsortedGames.map((game) => game.title);
         sortGames(unsortedGames, 'title-desc');
         expect(unsortedGames.map((game) => game.title)).toEqual(originalOrder);
+    });
+});
+
+describe('filterGamesByTitle', () => {
+    const availableGames: Game[] = [
+        createGame({ id: 1, title: 'Code Quest' }),
+        createGame({ id: 2, title: 'Terminal Tactics' }),
+        createGame({ id: 3, title: 'Quest for Bugs' }),
+    ];
+
+    it('returns matching titles using case-insensitive contains checks', () => {
+        const matches = filterGamesByTitle(availableGames, 'qUeSt');
+        expect(matches.map((game) => game.title)).toEqual(['Code Quest', 'Quest for Bugs']);
+    });
+
+    it('returns all games for empty search queries', () => {
+        const matches = filterGamesByTitle(availableGames, '   ');
+        expect(matches.map((game) => game.title)).toEqual(availableGames.map((game) => game.title));
+    });
+
+    it('returns an empty array when no title matches', () => {
+        const matches = filterGamesByTitle(availableGames, 'zzz');
+        expect(matches).toEqual([]);
+    });
+
+    it('does not mutate the provided games array', () => {
+        const originalOrder = availableGames.map((game) => game.title);
+        filterGamesByTitle(availableGames, 'quest');
+        expect(availableGames.map((game) => game.title)).toEqual(originalOrder);
     });
 });
