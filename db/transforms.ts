@@ -17,7 +17,7 @@ const CROWDFUNDING_BLURB = ' Support this game through our crowdfunding platform
  * Minimal RFC-4180-style CSV parser supporting quoted fields, escaped quotes
  * (""), and newlines inside quoted values. Returns rows keyed by header name.
  */
-export function parseCsv(content: string): Record<string, string>[] {
+export function parseCsv(content: string): Array<Record<string, string>> {
     const records: string[][] = [];
     let field = '';
     let record: string[] = [];
