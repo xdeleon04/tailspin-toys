@@ -4,7 +4,7 @@ import GameCard from '../components/GameCard.astro';
 import PageHero from '../components/PageHero.astro';
 import EmptyState from '../components/EmptyState.astro';
 import { getDatabase } from '../lib/db';
-import { getAllGames } from '../lib/games';
+import { defaultGameSortOption, gameSortChoices, getAllGames } from '../lib/games';
 
 export const prerender = true;
 
@@ -19,7 +19,32 @@ const games = await getAllGames(getDatabase());
     />
 
     <div>
-      <h2 class="text-2xl font-medium mb-6 text-slate-100">Featured Games</h2>
+      <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 class="text-2xl font-medium text-slate-100">Featured Games</h2>
+          <p id="game-sort-help" class="mt-2 max-w-2xl text-sm text-slate-400">
+            Games without ratings appear after rated games when sorting by star rating.
+          </p>
+        </div>
+
+        <div class="w-full md:w-72">
+          <label for="game-sort" class="mb-2 block text-sm font-medium text-slate-200">
+            Sort games
+          </label>
+          <select
+            id="game-sort"
+            class="w-full rounded-lg border border-slate-600 bg-slate-900 px-4 py-3 text-sm text-slate-100 shadow-sm transition-colors duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-describedby="game-sort-help"
+            data-testid="game-sort-select"
+          >
+            {gameSortChoices.map((choice) => (
+              <option value={choice.value} selected={choice.value === defaultGameSortOption}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {games.length === 0 ? (
         <EmptyState text="No games available at the moment." />
@@ -31,3 +56,76 @@ const games = await getAllGames(getDatabase());
     </div>
   </div>
 </Layout>
+
+<script>
+  function initGameSorting(): void {
+    const sortSelect = document.querySelector<HTMLSelectElement>('[data-testid="game-sort-select"]');
+    const gamesGrid = document.querySelector<HTMLElement>('[data-testid="games-grid"]');
+
+    if (!sortSelect || !gamesGrid) {
+      console.warn('Game sorting is missing the expected homepage controls.');
+      return;
+    }
+
+    const getTitle = (card: HTMLElement): string => card.dataset.gameTitle ?? '';
+    const getRating = (card: HTMLElement): number | null => {
+      const rawRating = card.dataset.gameRating;
+
+      if (!rawRating) {
+        return null;
+      }
+
+      const rating = Number(rawRating);
+      return Number.isFinite(rating) ? rating : null;
+    };
+    const compareTitleAsc = (a: HTMLElement, b: HTMLElement): number =>
+      getTitle(a).localeCompare(getTitle(b), 'en', { sensitivity: 'base' });
+    const compareTitleDesc = (a: HTMLElement, b: HTMLElement): number => compareTitleAsc(b, a);
+    const compareRatingDesc = (a: HTMLElement, b: HTMLElement): number => {
+      const ratingA = getRating(a);
+      const ratingB = getRating(b);
+
+      if (ratingA === null && ratingB === null) {
+        return compareTitleAsc(a, b);
+      }
+
+      if (ratingA === null) {
+        return 1;
+      }
+
+      if (ratingB === null) {
+        return -1;
+      }
+
+      const ratingOrder = ratingB - ratingA;
+      return ratingOrder === 0 ? compareTitleAsc(a, b) : ratingOrder;
+    };
+
+    const sortCards = (sortOption: string): void => {
+      const gameCards = Array.from(gamesGrid.querySelectorAll<HTMLElement>('[data-testid="game-card"]'));
+
+      switch (sortOption) {
+        case 'title-desc':
+          gameCards.sort(compareTitleDesc);
+          break;
+        case 'rating-desc':
+          gameCards.sort(compareRatingDesc);
+          break;
+        case 'title-asc':
+          gameCards.sort(compareTitleAsc);
+          break;
+        default:
+          console.warn(`Unsupported game sort option: ${sortOption}`);
+          return;
+      }
+
+      gamesGrid.append(...gameCards);
+    };
+
+    sortSelect.addEventListener('change', () => {
+      sortCards(sortSelect.value);
+    });
+  }
+
+  initGameSorting();
+</script>

@@ -1,4 +1,49 @@
-import { test, expect, type Response } from '@playwright/test';
+import { test, expect, type Page, type Response } from '@playwright/test';
+
+interface GameSummary {
+  title: string;
+  rating: number | null;
+}
+
+async function getGameSummaries(page: Page): Promise<GameSummary[]> {
+  return page.getByTestId('game-card').evaluateAll((cards) =>
+    cards.map((card) => {
+      const element = card as HTMLElement;
+      const rawRating = element.dataset.gameRating;
+      const rating = rawRating ? Number(rawRating) : null;
+
+      return {
+        title: element.dataset.gameTitle ?? '',
+        rating: rating !== null && Number.isFinite(rating) ? rating : null,
+      };
+    }),
+  );
+}
+
+function getTitles(games: GameSummary[]): string[] {
+  return games.map((game) => game.title);
+}
+
+function compareTitleAsc(a: GameSummary, b: GameSummary): number {
+  return a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
+}
+
+function compareRatingDesc(a: GameSummary, b: GameSummary): number {
+  if (a.rating === null && b.rating === null) {
+    return compareTitleAsc(a, b);
+  }
+
+  if (a.rating === null) {
+    return 1;
+  }
+
+  if (b.rating === null) {
+    return -1;
+  }
+
+  const ratingOrder = b.rating - a.rating;
+  return ratingOrder === 0 ? compareTitleAsc(a, b) : ratingOrder;
+}
 
 test.describe('Game Listing and Navigation', () => {
   test('should display games with titles on index page', async ({ page }) => {
@@ -50,6 +95,49 @@ test.describe('Game Listing and Navigation', () => {
       if (gameTitle) {
         await expect(page.getByTestId('game-details-title')).toHaveText(gameTitle);
       }
+    });
+  });
+
+  test('should sort games by title using the sort control', async ({ page }) => {
+    await test.step('Navigate to homepage', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+    });
+
+    await test.step('Verify default title ascending order', async () => {
+      const sortSelect = page.getByRole('combobox', { name: /sort games/i });
+      await expect(sortSelect).toHaveValue('title-asc');
+
+      const games = await getGameSummaries(page);
+      const expectedTitles = getTitles([...games].sort(compareTitleAsc));
+      expect(getTitles(games)).toEqual(expectedTitles);
+    });
+
+    await test.step('Sort by title descending', async () => {
+      const sortSelect = page.getByRole('combobox', { name: /sort games/i });
+      await sortSelect.selectOption('title-desc');
+      await expect(sortSelect).toHaveValue('title-desc');
+
+      const games = await getGameSummaries(page);
+      const expectedTitles = getTitles([...games].sort((a, b) => compareTitleAsc(b, a)));
+      expect(getTitles(games)).toEqual(expectedTitles);
+    });
+  });
+
+  test('should sort games by highest star rating using the sort control', async ({ page }) => {
+    await test.step('Navigate to homepage', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+    });
+
+    await test.step('Sort by highest star rating', async () => {
+      const sortSelect = page.getByRole('combobox', { name: /sort games/i });
+      await sortSelect.selectOption('rating-desc');
+      await expect(sortSelect).toHaveValue('rating-desc');
+
+      const games = await getGameSummaries(page);
+      const expectedTitles = getTitles([...games].sort(compareRatingDesc));
+      expect(getTitles(games)).toEqual(expectedTitles);
     });
   });
 

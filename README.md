@@ -35,6 +35,8 @@ npm run dev
 
 `predev` migrates and seeds the local database first. Then navigate to the [website](http://localhost:4321) to see the site!
 
+The homepage game catalog can be sorted by title A-Z, title Z-A, or highest star rating. Games without a star rating appear after rated games when sorting by rating, with title A-Z used as the stable tie-breaker.
+
 To preview a production build instead:
 
 ```bash
