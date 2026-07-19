@@ -104,6 +104,10 @@ npm run typecheck:all    # both of the above
 
 This project ships Copilot customizations to assist with quality assurance:
 
+### Issue Triage Board Canvas
+
+The **Issue triage board** canvas (`.github/extensions/issue-triage-board/extension.mjs`) provides a shared Kanban-style view for triaging open GitHub issues. It ranks issues by likely attention needed, highlights the top three with descriptions and justifications, lists the remaining open issues below, and includes an action on each card to add the issue to the current Copilot session context.
+
 ### PR Readiness Agent
 
 The **PR Readiness** agent (`.github/agents/pr-readiness.md`) is a pre-PR quality gate. Invoke it before opening a pull request to:
